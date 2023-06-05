@@ -1,4 +1,4 @@
-package com.dayone.persist;
+package com.dayone.persist.repository;
 
 import com.dayone.persist.entity.CompanyEntity;
 import org.springframework.data.domain.Page;

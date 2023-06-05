@@ -24,52 +24,55 @@ public class YahooFinanceScraper implements Scraper {
 
     private static final long START_TIME = 86400;   // 60 * 60 * 24
 
+
     @Override
     public ScrapedResult scrap(Company company) {
-        var scrapResult = new ScrapedResult();
-        scrapResult.setCompany(company);
+
+        ScrapedResult scrapedResult = null;
 
         try {
-            long now = System.currentTimeMillis() / 1000;
-
+            long now = System.currentTimeMillis() / 1000;   // 초 단위로 변경, 1970/01/01 부터 현재까지 걸린 시간 의미
             String url = String.format(STATISTICS_URL, company.getTicker(), START_TIME, now);
-            Connection connection = Jsoup.connect(url);
-            Document document = connection.get();
 
-            Elements parsingDivs = document.getElementsByAttributeValue("data-test", "historical-prices");
-            Element tableEle = parsingDivs.get(0);  // table 전체
+            Connection connect = Jsoup.connect(url);
+            Document document = connect.get();
 
-            Element tbody = tableEle.children().get(1);
+            Elements parsingDivs = document.body().getElementsByAttributeValue("data-test", "historical-prices");
+            Element tableElement = parsingDivs.get(0);
+
+            Element tbody = tableElement.child(1);
 
             List<Dividend> dividends = new ArrayList<>();
+
             for (Element e : tbody.children()) {
-                String txt = e.text();
-                if (!txt.endsWith("Dividend")) {
+                String text = e.text();
+
+                if (!text.endsWith("Dividend")) {
                     continue;
                 }
 
-                String[] splits = txt.split(" ");
-                int month = Month.strToNumber(splits[0]);
-                int day = Integer.valueOf(splits[1].replace(",", ""));
-                int year = Integer.valueOf(splits[2]);
-                String dividend = splits[3];
+                String[] split = text.split(" ");
+                int month = Month.strToNumber(split[0]);
+                int day = Integer.parseInt(split[1].replace(",", ""));
+                int year = Integer.parseInt(split[2]);
+                String dividend = split[3];
 
-                if (month < 0) {
-                    throw new RuntimeException("Unexpected Month enum value -> " + splits[0]);
+                if(month < 0) {
+                    throw new RuntimeException("unexpected Month enum value -> " + split[0]);
                 }
 
-                Dividend d = null;  // not implemented yet
-                dividends.add(d);
+                dividends.add(new Dividend(LocalDateTime.of(year, month, day, 0, 0), dividend));
 
             }
-            scrapResult.setDividends(dividends);
+            scrapedResult = ScrapedResult.builder()
+                    .company(company)
+                    .dividends(dividends)
+                    .build();
 
         } catch (IOException e) {
-            // TODO error handling
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-
-        return scrapResult;
+        return scrapedResult;
     }
 
     @Override
